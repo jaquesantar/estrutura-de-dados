@@ -28,7 +28,7 @@ struct Pilha {
 // Variável global para gerar IDs únicos
 int nextId = 0;
 
-// Funções para a Fila
+// Funções para manipulação da fila
 void inicializarFila(struct Fila* fila) {
     fila->inicio = 0;
     fila->fim = -1;
@@ -43,7 +43,7 @@ int filaVazia(struct Fila* fila) {
     return fila->total == 0;
 }
 
-// Funções para a Pilha
+// Funções para manipulação da pilha
 void inicializarPilha(struct Pilha* pilha) {
     pilha->topo = -1;
 }
@@ -56,7 +56,7 @@ int pilhaVazia(struct Pilha* pilha) {
     return pilha->topo == -1;
 }
 
-// Função para gerar uma peça aleatória
+// Gera uma nova peça aleatória
 struct Peca gerarPeca() {
     struct Peca novaPeca;
     char tipos[] = {'I', 'O', 'T', 'L'};
@@ -65,18 +65,16 @@ struct Peca gerarPeca() {
     return novaPeca;
 }
 
-// Função para inserir uma peça na fila
+// Insere uma nova peça na fila
 void inserirPeca(struct Fila* fila) {
-    if (filaCheia(fila)) {
-        printf("Fila cheia!\n");
-        return;
-    }
+    if (filaCheia(fila)) return;
+    
     fila->fim = (fila->fim + 1) % TAM_FILA;
     fila->pecas[fila->fim] = gerarPeca();
     fila->total++;
 }
 
-// Função para jogar a peça da frente da fila
+// Remove e retorna a peça da frente da fila
 void jogarPeca(struct Fila* fila) {
     if (filaVazia(fila)) {
         printf("Fila vazia!\n");
@@ -90,23 +88,19 @@ void jogarPeca(struct Fila* fila) {
     fila->inicio = (fila->inicio + 1) % TAM_FILA;
     fila->total--;
     
-    // Gera nova peça automaticamente
     inserirPeca(fila);
 }
 
-// Função para reservar uma peça (move da fila para a pilha)
+// Move a peça da fila para a pilha
 void reservarPeca(struct Fila* fila, struct Pilha* pilha) {
-    if (filaVazia(fila)) {
-        printf("Fila vazia!\n");
-        return;
-    }
-    if (pilhaCheia(pilha)) {
-        printf("Pilha de reserva cheia!\n");
+    if (filaVazia(fila) || pilhaCheia(pilha)) {
+        printf("Operacao invalida!\n");
         return;
     }
     
     pilha->topo++;
     pilha->pecas[pilha->topo] = fila->pecas[fila->inicio];
+    
     printf("Peca reservada: [%c %d]\n", 
            pilha->pecas[pilha->topo].nome, 
            pilha->pecas[pilha->topo].id);
@@ -114,25 +108,54 @@ void reservarPeca(struct Fila* fila, struct Pilha* pilha) {
     fila->inicio = (fila->inicio + 1) % TAM_FILA;
     fila->total--;
     
-    // Gera nova peça automaticamente
     inserirPeca(fila);
 }
 
-// Função para usar uma peça reservada
+// Remove a peça do topo da pilha
 void usarPecaReservada(struct Pilha* pilha) {
     if (pilhaVazia(pilha)) {
-        printf("Pilha de reserva vazia!\n");
+        printf("Pilha vazia!\n");
         return;
     }
     
-    printf("Peca usada da reserva: [%c %d]\n", 
+    printf("Peca usada: [%c %d]\n", 
            pilha->pecas[pilha->topo].nome, 
            pilha->pecas[pilha->topo].id);
     
     pilha->topo--;
 }
 
-// Função para exibir o estado atual do jogo
+// Troca a peça da frente da fila com o topo da pilha
+void trocarPeca(struct Fila* fila, struct Pilha* pilha) {
+    if (filaVazia(fila) || pilhaVazia(pilha)) {
+        printf("Impossivel trocar: fila ou pilha vazia!\n");
+        return;
+    }
+    
+    struct Peca temp = fila->pecas[fila->inicio];
+    fila->pecas[fila->inicio] = pilha->pecas[pilha->topo];
+    pilha->pecas[pilha->topo] = temp;
+    
+    printf("Troca realizada com sucesso!\n");
+}
+
+// Troca as três primeiras peças da fila com as três da pilha
+void trocarMultiplo(struct Fila* fila, struct Pilha* pilha) {
+    if (fila->total < 3 || pilha->topo < 2) {
+        printf("Impossivel realizar troca multipla!\n");
+        return;
+    }
+    
+    for (int i = 0; i < 3; i++) {
+        struct Peca temp = fila->pecas[(fila->inicio + i) % TAM_FILA];
+        fila->pecas[(fila->inicio + i) % TAM_FILA] = pilha->pecas[pilha->topo - i];
+        pilha->pecas[pilha->topo - i] = temp;
+    }
+    
+    printf("Troca multipla realizada!\n");
+}
+
+// Exibe o estado atual do jogo
 void exibirEstado(struct Fila* fila, struct Pilha* pilha) {
     printf("\n=== Estado Atual ===\n");
     
@@ -181,9 +204,11 @@ int main() {
         exibirEstado(&fila, &pilha);
         
         printf("\n=== MENU ===\n");
-        printf("1. Jogar peca\n");
-        printf("2. Reservar peca\n");
-        printf("3. Usar peca reservada\n");
+        printf("1. Jogar peca da frente da fila\n");
+        printf("2. Enviar peca da fila para reserva\n");
+        printf("3. Usar peca da reserva\n");
+        printf("4. Trocar peca da fila com topo da pilha\n");
+        printf("5. Trocar 3 pecas da fila com pilha\n");
         printf("0. Sair\n");
         printf("Opcao: ");
         scanf("%d", &opcao);
@@ -197,6 +222,12 @@ int main() {
                 break;
             case 3:
                 usarPecaReservada(&pilha);
+                break;
+            case 4:
+                trocarPeca(&fila, &pilha);
+                break;
+            case 5:
+                trocarMultiplo(&fila, &pilha);
                 break;
             case 0:
                 printf("Programa encerrado!\n");
